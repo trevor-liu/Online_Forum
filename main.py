@@ -1,3 +1,4 @@
+# Phase 1
 import pymongo, json
 from pymongo import MongoClient
 
@@ -21,14 +22,31 @@ for collection in db.list_collection_names():
 # creating a collection
 col = db["Posts"]
 
-# # inserting data into mongodb
+# inserting Posts data into mongodb
 with open("Posts.json") as file:
     file_data = json.load(file)
 
-if isinstance(file_data, list):
-    col.insert_many(file_data)
-else:
-    col.insert_one(file_data)
+col.insert_many(file_data["posts"]["row"][::2])
+col.insert_many(file_data["posts"]["row"][1::2])
+
+# creating a collection
+col = db["Tags"]
+
+# inserting Posts data into mongodb
+with open("Tags.json") as file:
+    file_data = json.load(file)
 
 
+col.insert_many(file_data["tags"]["row"][::2])
+col.insert_many(file_data["tags"]["row"][1::2])
 
+
+# creating a collection
+col = db["Votes"]
+
+# inserting Posts data into mongodb
+with open("Votes.json") as file:
+    file_data = json.load(file)
+
+col.insert_many(file_data["votes"]["row"][::2])
+col.insert_many(file_data["votes"]["row"][1::2])
