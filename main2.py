@@ -25,6 +25,7 @@ if userInputId:
         postsId.append(result["Id"])
         counter += 1
         sum += int(result["Score"])
+    print("The number of questions owned: ", counter)
     print("The average score for questions is: ", sum/counter)
 
     # Average for answers
@@ -35,6 +36,7 @@ if userInputId:
         postsId.append(result["Id"])
         counter += 1
         sum += int(result["Score"])
+    print("The number of answers owned: ", counter)
     print("The average score for answers is: ", sum/counter)
 
     # Number of votes registered for the user
@@ -64,7 +66,7 @@ while run:
         #                     "Title": titleText, 
         #                     "Body": bodyText,
         #                     "Tags": tagText})
-        
+
 
         pass
     elif userAction == '2':

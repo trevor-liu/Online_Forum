@@ -9,7 +9,7 @@ from pymongo import MongoClient
 port = int(input("Enter a port number: "))
 client = MongoClient('localhost', port)
 
-# creating a database
+# creating a database if not exist, or use the data 291db
 db = client['291db']
 print("Database \'291db\' is created !!")
 
