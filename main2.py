@@ -1,9 +1,25 @@
 from pymongo import MongoClient
 from datetime import datetime
+import random
 
 import pymongo
 
 # go to server folder and enter (mongod --dbpath=data) to start the server
+
+
+
+# Creating a unique post Id
+def uniqueId():
+    uniqueId = ""
+    notFinished = True
+    while (notFinished):
+        uniqueId = str(random.randint(400700, 1000000))
+        if postsCol.count_documents({'Id': uniqueId}) <= 0:
+            notFinished = False
+    print(uniqueId)
+    return uniqueId
+
+
 
 
 # Connecting to the mongodb
@@ -16,12 +32,12 @@ print("Database \'291db\' is created !!")
 
 postsCol = db['Posts']
 votesCol = db['Votes']
-postsCol.create_index([('Title', pymongo.TEXT), ('Body', pymongo.TEXT), ('Tags', pymongo.TEXT)], name='search_index', default_language='english')
 
 userInputId = input("Enter your ID: ")
 
 if userInputId:
     postsId = []
+
     # Average for questions
     sum = 0;
     counter = 0;
@@ -60,7 +76,6 @@ while run:
     userAction = input("Posts question(Enter 1), Search for questions(Enter 2): ")
     if userAction == '1':
         # Posts question
-        # postsCol.create_index( { "Id":1}, unique = True)
         titleText = input("Enter Title: ")
         bodyText = input("Enter Body: ")
 
@@ -72,6 +87,7 @@ while run:
 
         # Creation Date
         s = datetime.today().strftime('%Y-%m-%dT%H:%M:%S.%f')
+
 
         # missing Id, and havn't handle if no OwnerUserId
         postsCol.insert_one({"PostTypeId": "1",
@@ -85,6 +101,7 @@ while run:
                             "AnswerCount": 0,
                             "CommentCount": 0,
                             "FavoriteCount": 0,
+                            "Id": uniqueId(),
                             "ContentLicense": "CC BY-SA 2.5"})
         print("Your question is posted!")
         # Ending the program      
@@ -107,10 +124,10 @@ while run:
 
             # user selecting a question
             if input("Select this question?(y/n) ") == "y":
-                
+
+                questionSelected = True
                 print(result)
                 postsCol.update_one({"_id": result["_id"]}, {"$inc": {"ViewCount": 1 }})
-                print("ViewCount has been incremented.")
 
                 userQuestionAction = input("Do you want to Answer the question or view all the answer from this question:(answer/view) ")
                 if userQuestionAction == "answer":
@@ -134,11 +151,53 @@ while run:
 
                 if userQuestionAction == "view":
                     # Task 4
-                    pass
+                    selectedAnswer = {}
+                    answerSeleted = False
+                    if "AcceptedAnswerId" in result:
+                        acceptedAnswer = postsCol.find_one({"Id": result["AcceptedAnswerId"]})
+                        print(acceptedAnswer["Body"][:80])
+                        print(acceptedAnswer["CreationDate"])
+                        print(acceptedAnswer["Score"])
+                        if input("Do you want to select this answer?(y/n) ") == "y": 
+                            selectedAnswer = acceptedAnswer
+                            answerSeleted = True
+                            break
+
+                        allAcceptedAnswer = postsCol.find({"ParentId": result["Id"], "Id": {"$nin": [result["AcceptedAnswerId"]]} })
+                        for answer in allAcceptedAnswer:
+                            print(answer["Body"][:80])
+                            print(answer["CreationDate"])
+                            print(answer["Score"])
+                            if input("Do you want to select this answer?(y/n) ") == "y":
+                                selectedAnswer = answer
+                                answerSeleted = True
+                                break
+                    else:
+                        allAcceptedAnswer = postsCol.find({"ParentId": result["Id"]})
+                        for answer in allAcceptedAnswer:
+                            print(answer["Body"][:80])
+                            print(answer["CreationDate"])
+                            print(answer["Score"])
+                            if input("Do you want to select this answer?(y/n) ") == "y": 
+                                selectedAnswer = answer
+                                answerSeleted = True
+                                break
+                    
+
+                    # User selected an answer
+                    if answerSeleted:
+                        print(selectedAnswer)
+                    
+
+
+                    if input("Do you want to exit the the program?(y/n) ") == "y": run = False
+                
+                
 
 
 
 
-                break;
+
+                break           # after the user selected a question, stop displaying all the remaining post
         
 

@@ -50,3 +50,5 @@ with open("Votes.json") as file:
 
 col.insert_many(file_data["votes"]["row"][::2])
 col.insert_many(file_data["votes"]["row"][1::2])
+
+db["Posts"].create_index([('Title', pymongo.TEXT), ('Body', pymongo.TEXT), ('Tags', pymongo.TEXT)], name='search_index', default_language='english')
