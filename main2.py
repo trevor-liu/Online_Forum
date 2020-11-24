@@ -1,24 +1,11 @@
+# search function return post without keywords
+# update answer count after answer posted (finished)
+
 from pymongo import MongoClient
 from datetime import datetime
-import random
-
-import pymongo
+import random, re, pymongo
 
 # go to server folder and enter (mongod --dbpath=data) to start the server
-
-
-
-# Creating a unique post Id
-def uniqueId():
-    uniqueId = ""
-    notFinished = True
-    while (notFinished):
-        uniqueId = str(random.randint(400700, 1000000))
-        if postsCol.count_documents({'Id': uniqueId}) <= 0:
-            notFinished = False
-    print(uniqueId)
-    return uniqueId
-
 
 
 
@@ -33,20 +20,63 @@ print("Database \'291db\' is created !!")
 postsCol = db['Posts']
 tagsCol = db["Tags"]
 votesCol = db['Votes']
+db["Posts"].create_index([('Title', pymongo.TEXT), ('Body', pymongo.TEXT), ('Tags', pymongo.TEXT)], name='search_index', default_language='english')
+
+
+# Creating a unique post Id
+def uniquePid():
+    uniqueId = ""
+    notFinished = True
+    while (notFinished):
+        uniqueId = str(random.randint(400700, 1000000000))
+        if postsCol.count_documents({'Id': uniqueId}) <= 0:
+            notFinished = False
+    return uniqueId
+
+
+# Creating a unique post Id
+def uniqueVid():
+    uniqueId = ""
+    notFinished = True
+    while (notFinished):
+        uniqueId = str(random.randint(0, 1000000000))
+        if votesCol.count_documents({'Id': uniqueId}) <= 0:
+            notFinished = False
+    return uniqueId
+
+# Creating a unique post Id
+def uniqueTid():
+    uniqueId = ""
+    notFinished = True
+    while (notFinished):
+        uniqueId = str(random.randint(0, 1000000000))
+        if tagsCol.count_documents({'Id': uniqueId}) <= 0:
+            notFinished = False
+    return uniqueId
+
+def checkTag(tagText):
+
+    tagText = re.findall(r"[\w']+", tagText)
+
+    for i in tagText:
+        if tagsCol.count_documents({"TagName": i}) > 0:
+            tagsCol.update_one({"TagName": i}, {"$inc": {"Count": 1}})
+        else:
+            tagsCol.insert_one({"Id": uniqueTid(), "TagName": i, "Count": 1})
+
 
 userInputId = input("Enter your ID: ")
 
 # record vote into the system
+# return True if vote are valid, False if it is invalid
 def votingOnPost(post_Id, vote_type):
-    # Creation Date
-    s = datetime.today().strftime('%Y-%m-%dT%H:%M:%S.%f')
 
     # check if user already voted in the same post
-    if userInputId:
-        votesCol.find_one({"PostId": post_Id})
-        pass
-    else:
-        votesCol.insert_one({"PostId": post_Id, "VoteTypeId": "2", "CreationDate": s[:-3]})  # create Unique Id
+    if userInputId is not "" and votesCol.count_documents({"PostId": post_Id, "userId": userInputId}) is not 0: return False
+
+    # Creation Date
+    s = datetime.today().strftime('%Y-%m-%dT%H:%M:%S.%f')
+    votesCol.insert_one({"PostId": post_Id, "userId": userInputId, "VoteTypeId": "2", "CreationDate": s[:-3], "Id": uniqueVid()}) # create Unique Id
 
     return True
 
@@ -55,26 +85,26 @@ if userInputId:
     postsId = []
 
     # Average for questions
-    sum = 0;
-    counter = 0;
+    sum = 0
+    counter = 0
     results = postsCol.find({ "OwnerUserId":userInputId, "PostTypeId":"1"})  # "1" are Questions and "2" are Answers
     for result in results:
         postsId.append(result["Id"])
         counter += 1
         sum += int(result["Score"])
     print("The number of questions owned: ", counter)
-    print("The average score for questions is: ", sum/counter)
+    print("The average score for questions is: ", round(sum/counter, 2))
 
     # Average for answers
-    sum = 0;
-    counter = 0;
+    sum = 0
+    counter = 0
     results = postsCol.find({ "OwnerUserId":userInputId, "PostTypeId":"2"})  # "1" are Questions and "2" are Answers
     for result in results:
         postsId.append(result["Id"])
         counter += 1
         sum += int(result["Score"])
     print("The number of answers owned: ", counter)
-    print("The average score for answers is: ", sum/counter)
+    print("The average score for answers is: ", round(sum/counter, 2))
 
     # Number of votes registered for the user
     counter = 0
@@ -101,11 +131,11 @@ while run:
         for i in range(int(tagNumber)):
             tagText = tagText + "<" + input("Enter a tag: ") + ">"
 
+        checkTag(tagText)
         # Creation Date
         s = datetime.today().strftime('%Y-%m-%dT%H:%M:%S.%f')
 
 
-        # missing Id, and havn't handle if no OwnerUserId
         postsCol.insert_one({"PostTypeId": "1",
                             "Title": titleText,
                             "Body": bodyText,
@@ -117,7 +147,7 @@ while run:
                             "AnswerCount": 0,
                             "CommentCount": 0,
                             "FavoriteCount": 0,
-                            "Id": uniqueId(),
+                            "Id": uniquePid(),
                             "ContentLicense": "CC BY-SA 2.5"})
         print("Your question is posted!")
         # Ending the program      
@@ -130,6 +160,8 @@ while run:
         # Search for questions
         keyWords = input("Enter keywords seperated by space: ")
         results = postsCol.find({"$text": {"$search": keyWords, "$caseSensitive": False}, "PostTypeId": "1"})
+        print("The number of Question that have this keywords: ",  postsCol.count_documents({"$text": {"$search": keyWords, "$caseSensitive": False}, "PostTypeId": "1"}))
+
         for result in results:
     
             # printing each question
@@ -146,8 +178,8 @@ while run:
                 print(result)
                 postsCol.update_one({"_id": result["_id"]}, {"$inc": {"ViewCount": 1 }})
 
-                userQuestionAction = input("Do you want to Answer the question, view all the answer, or vote on this question?(answer/view/vote) ")
-                if userQuestionAction == "answer":
+                userQuestionAnswerAction = input("Do you want to Answer the question, view all the answer, or vote on this question?(answer/view/vote) ")
+                if userQuestionAnswerAction == "answer":
                     answerBody = input("Enter the body of your answer: ")
 
                     # Creation Date
@@ -161,56 +193,61 @@ while run:
                                         "ParentId": result["Id"],
                                         "Score": 0,
                                         "CommentCount": 0,
-                                        "ContentLicense": "CC BY-SA 2.5"
+                                        "ContentLicense": "CC BY-SA 2.5",
+                                        "Id": uniquePid()
                                         })
+                    postsCol.update_one({"Id": result["Id"]}, {"$inc": {"AnswerCount": 1}})
                     print("Answer posted!")
 
-                if userQuestionAction == "view":
+                if userQuestionAnswerAction == "view":
                     # Task 4
 
                     # if there are accepted answer, display accepted answer first than all answer
                     # else just display all answer
                     if "AcceptedAnswerId" in result:
                         acceptedAnswer = postsCol.find_one({"Id": result["AcceptedAnswerId"]})
-                        print(acceptedAnswer["Body"][:80])
-                        print(acceptedAnswer["CreationDate"])
-                        print(acceptedAnswer["Score"])
+                        print("Body: ", acceptedAnswer["Body"][:80])
+                        print("CreationDate: ", acceptedAnswer["CreationDate"])
+                        print("Score: ", acceptedAnswer["Score"])
                         if input("Do you want to select this answer?(y/n) ") == "y":
                             selectedAnswer = acceptedAnswer
                             answerSeleted = True
                             print(selectedAnswer)
+                            if input("Do you want to vote on this answer?(y/n) ") == "y": userQuestionAnswerAction = "vote"
                             break
 
                         allAcceptedAnswer = postsCol.find({"ParentId": result["Id"], "Id": {"$nin": [result["AcceptedAnswerId"]]} })
                         for answer in allAcceptedAnswer:
-                            print(answer["Body"][:80])
-                            print(answer["CreationDate"])
-                            print(answer["Score"])
+                            print("Body: ", answer["Body"][:80])
+                            print("CreationDate: ", answer["CreationDate"])
+                            print("Score: ", answer["Score"])
                             if input("Do you want to select this answer?(y/n) ") == "y":
                                 selectedAnswer = answer
                                 answerSeleted = True
                                 print(selectedAnswer)
+                                if input("Do you want to vote on this answer?(y/n) ") == "y": userQuestionAnswerAction = "vote"
                                 break
                     else:
                         allAcceptedAnswer = postsCol.find({"ParentId": result["Id"]})
                         for answer in allAcceptedAnswer:
-                            print(answer["Body"][:80])
-                            print(answer["CreationDate"])
-                            print(answer["Score"])
+                            print("Body: ", answer["Body"][:80])
+                            print("CreationDate: ", answer["CreationDate"])
+                            print("Score: ", answer["Score"])
                             if input("Do you want to select this answer?(y/n) ") == "y": 
                                 selectedAnswer = answer
                                 answerSeleted = True
                                 print(selectedAnswer)
+                                if input("Do you want to vote on this answer?(y/n) ") == "y": userQuestionAnswerAction = "vote"
                                 break
                     
                     
                 # Voting on the selected post
-                if userQuestionAction == "vote" and answerSeleted and votingOnPost(selectedAnswer["Id"], "2"):
+                if userQuestionAnswerAction == "vote" and answerSeleted and votingOnPost(selectedAnswer["Id"], "2"):
                     # increase the score by one
-                    pass
-                elif userQuestionAction == "vote" and votingOnPost(result["Id"], "2"):
-                    # increase the score by one
-                    pass
+                    postsCol.update_one({"Id": selectedAnswer["Id"]}, {"$inc": {"Score": 1}})
+
+                elif userQuestionAnswerAction == "vote" and votingOnPost(result["Id"], "2"):
+                    postsCol.update_one({"Id": result["Id"]}, {"$inc": {"Score": 1}})
                         
 
 
@@ -224,6 +261,4 @@ while run:
 
 
                 break           # after the user selected a question, stop displaying all the remaining post
-        
-
 
