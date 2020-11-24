@@ -31,9 +31,25 @@ db = client['291db']
 print("Database \'291db\' is created !!")
 
 postsCol = db['Posts']
+tagsCol = db["Tags"]
 votesCol = db['Votes']
 
 userInputId = input("Enter your ID: ")
+
+# record vote into the system
+def votingOnPost(post_Id, vote_type):
+    # Creation Date
+    s = datetime.today().strftime('%Y-%m-%dT%H:%M:%S.%f')
+
+    # check if user already voted in the same post
+    if userInputId:
+        votesCol.find_one({"PostId": post_Id})
+        pass
+    else:
+        votesCol.insert_one({"PostId": post_Id, "VoteTypeId": "2", "CreationDate": s[:-3]})  # create Unique Id
+
+    return True
+
 
 if userInputId:
     postsId = []
@@ -125,11 +141,12 @@ while run:
             # user selecting a question
             if input("Select this question?(y/n) ") == "y":
 
-                questionSelected = True
+                selectedAnswer = {}
+                answerSeleted = False
                 print(result)
                 postsCol.update_one({"_id": result["_id"]}, {"$inc": {"ViewCount": 1 }})
 
-                userQuestionAction = input("Do you want to Answer the question or view all the answer from this question:(answer/view) ")
+                userQuestionAction = input("Do you want to Answer the question, view all the answer, or vote on this question?(answer/view/vote) ")
                 if userQuestionAction == "answer":
                     answerBody = input("Enter the body of your answer: ")
 
@@ -147,20 +164,21 @@ while run:
                                         "ContentLicense": "CC BY-SA 2.5"
                                         })
                     print("Answer posted!")
-                    if input("Do you want to view all the answer for this question?(y/n) ") == 'y': userQuestionAction = "view"
 
                 if userQuestionAction == "view":
                     # Task 4
-                    selectedAnswer = {}
-                    answerSeleted = False
+
+                    # if there are accepted answer, display accepted answer first than all answer
+                    # else just display all answer
                     if "AcceptedAnswerId" in result:
                         acceptedAnswer = postsCol.find_one({"Id": result["AcceptedAnswerId"]})
                         print(acceptedAnswer["Body"][:80])
                         print(acceptedAnswer["CreationDate"])
                         print(acceptedAnswer["Score"])
-                        if input("Do you want to select this answer?(y/n) ") == "y": 
+                        if input("Do you want to select this answer?(y/n) ") == "y":
                             selectedAnswer = acceptedAnswer
                             answerSeleted = True
+                            print(selectedAnswer)
                             break
 
                         allAcceptedAnswer = postsCol.find({"ParentId": result["Id"], "Id": {"$nin": [result["AcceptedAnswerId"]]} })
@@ -171,6 +189,7 @@ while run:
                             if input("Do you want to select this answer?(y/n) ") == "y":
                                 selectedAnswer = answer
                                 answerSeleted = True
+                                print(selectedAnswer)
                                 break
                     else:
                         allAcceptedAnswer = postsCol.find({"ParentId": result["Id"]})
@@ -181,16 +200,22 @@ while run:
                             if input("Do you want to select this answer?(y/n) ") == "y": 
                                 selectedAnswer = answer
                                 answerSeleted = True
+                                print(selectedAnswer)
                                 break
                     
-
-                    # User selected an answer
-                    if answerSeleted:
-                        print(selectedAnswer)
                     
+                # Voting on the selected post
+                if userQuestionAction == "vote" and answerSeleted and votingOnPost(selectedAnswer["Id"], "2"):
+                    # increase the score by one
+                    pass
+                elif userQuestionAction == "vote" and votingOnPost(result["Id"], "2"):
+                    # increase the score by one
+                    pass
+                        
 
 
-                    if input("Do you want to exit the the program?(y/n) ") == "y": run = False
+                # check if the user want to exit the program after 2-5
+                if input("Do you want to exit the the program?(y/n) ") == "y": run = False
                 
                 
 
@@ -200,4 +225,5 @@ while run:
 
                 break           # after the user selected a question, stop displaying all the remaining post
         
+
 
