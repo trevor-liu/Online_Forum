@@ -1,5 +1,4 @@
 # search function return post without keywords
-# update answer count after answer posted (finished)
 
 from pymongo import MongoClient
 from datetime import datetime
@@ -20,7 +19,8 @@ print("Database \'291db\' is created !!")
 postsCol = db['Posts']
 tagsCol = db["Tags"]
 votesCol = db['Votes']
-db["Posts"].create_index([('Title', pymongo.TEXT), ('Body', pymongo.TEXT), ('Tags', pymongo.TEXT)], name='search_index', default_language='english')
+db["Posts"].create_index([('Title', pymongo.TEXT), ('Body', pymongo.TEXT), ('Tags', pymongo.TEXT)], name='search_index')
+
 
 
 # Creating a unique post Id
@@ -107,11 +107,7 @@ if userInputId:
     print("The average score for answers is: ", round(sum/counter, 2))
 
     # Number of votes registered for the user
-    counter = 0
-    results = votesCol.find({})
-    for result in results:
-        if result["PostId"] in postsId:
-            counter += 1
+    counter = votesCol.count_documents({"userId": userInputId})
     print("Number of votes registered for the user is: ", counter)
 
 
@@ -119,8 +115,9 @@ if userInputId:
 # Second Part
 run = True
 while run:
-    userAction = input("Posts question(Enter 1), Search for questions(Enter 2): ")
-    if userAction == '1':
+    userAction = input("Posts question(Enter 1), Search for questions(Enter 2), or Exit(Enter 3): ")
+    if userAction == "3": run = False
+    elif userAction == '1':
         # Posts question
         titleText = input("Enter Title: ")
         bodyText = input("Enter Body: ")
