@@ -26,6 +26,7 @@ col = db["Posts"]
 with open("Posts.json") as file:
     file_data = json.load(file)
 
+
 col.insert_many(file_data["posts"]["row"][::2])
 col.insert_many(file_data["posts"]["row"][1::2])
 
